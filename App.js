@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { StyleSheet, Text, View, Dimensions } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, Text, View, ActivityIndicator, Dimensions } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import Animated, {
   useSharedValue,
@@ -9,102 +9,101 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Location from 'expo-location';
+import { fetchWeather, getWeatherInfo } from './src/services/weatherApi';
 
 const { width, height } = Dimensions.get('window');
 
 export default function App() {
-  const logoScale = useSharedValue(0);
-  const logoOpacity = useSharedValue(0);
-  const titleY = useSharedValue(50);
-  const titleOpacity = useSharedValue(0);
-  const subtitleOpacity = useSharedValue(0);
+  const [weather, setWeather] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const tempScale = useSharedValue(0);
+  const tempOpacity = useSharedValue(0);
 
   useEffect(() => {
-    // انیمیشن لوگو (با افکت کشسانی)
-    logoScale.value = withDelay(
-      200,
-      withTiming(1, { duration: 800, easing: Easing.elastic(1) })
-    );
-    logoOpacity.value = withDelay(200, withTiming(1, { duration: 600 }));
-
-    // انیمیشن عنوان (از پایین به بالا)
-    titleY.value = withDelay(
-      600,
-      withTiming(0, { duration: 700, easing: Easing.out(Easing.cubic) })
-    );
-    titleOpacity.value = withDelay(600, withTiming(1, { duration: 700 }));
-
-    // انیمیشن زیرنویس (fade in)
-    subtitleOpacity.value = withDelay(1000, withTiming(1, { duration: 600 }));
+    loadWeather();
   }, []);
 
-  const logoStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: logoScale.value }],
-    opacity: logoOpacity.value,
+  useEffect(() => {
+    if (weather) {
+      tempScale.value = withDelay(200, withTiming(1, { duration: 600, easing: Easing.elastic(1) }));
+      tempOpacity.value = withDelay(200, withTiming(1, { duration: 500 }));
+    }
+  }, [weather]);
+
+  const tempStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: tempScale.value }],
+    opacity: tempOpacity.value,
   }));
 
-  const titleStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: titleY.value }],
-    opacity: titleOpacity.value,
-  }));
+  async function loadWeather() {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setError('لطفاً دسترسی موقعیت مکانی را فعال کنید');
+        setLoading(false);
+        return;
+      }
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low });
+      const data = await fetchWeather(loc.coords.latitude, loc.coords.longitude);
+      setWeather(data);
+    } catch (e) {
+      setError('خطا در دریافت اطلاعات هوا');
+    } finally {
+      setLoading(false);
+    }
+  }
 
-  const subtitleStyle = useAnimatedStyle(() => ({
-    opacity: subtitleOpacity.value,
-  }));
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <LinearGradient colors={['#1e3c72', '#2a5298', '#4a90e2']} style={styles.bg} />
+        <ActivityIndicator size="large" color="#fff" />
+        <Text style={styles.loadingText}>در حال دریافت اطلاعات...</Text>
+        <StatusBar style="light" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.center}>
+        <LinearGradient colors={['#1e3c72', '#2a5298', '#4a90e2']} style={styles.bg} />
+        <Text style={styles.errorText}>⚠️ {error}</Text>
+        <StatusBar style="light" />
+      </View>
+    );
+  }
+
+  const info = getWeatherInfo(weather.weatherCode);
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={['#1e3c72', '#2a5298', '#4a90e2']}
-        style={styles.background}
-      />
+      <LinearGradient colors={['#1e3c72', '#2a5298', '#4a90e2']} style={styles.bg} />
       <StatusBar style="light" />
 
-      <Animated.View style={[styles.logoContainer, logoStyle]}>
-        <Text style={styles.logoIcon}>☀️</Text>
+      <Text style={styles.icon}>{info.icon}</Text>
+
+      <Animated.View style={[tempStyle]}>
+        <Text style={styles.temp}>{weather.temperature}°</Text>
       </Animated.View>
 
-      <Animated.View style={[styles.titleContainer, titleStyle]}>
-        <Text style={styles.title}>Weather App ABZ</Text>
-      </Animated.View>
-
-      <Animated.View style={[styles.subtitleContainer, subtitleStyle]}>
-        <Text style={styles.subtitle}>پیش‌بینی دقیق و زیبای هوا</Text>
-      </Animated.View>
+      <Text style={styles.label}>{info.label}</Text>
+      <Text style={styles.details}>💧 {weather.humidity}% | 💨 {weather.windSpeed} km/h</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  background: {
-    position: 'absolute',
-    width: width,
-    height: height,
-  },
-  logoContainer: {
-    marginBottom: 20,
-  },
-  logoIcon: {
-    fontSize: 100,
-  },
-  titleContainer: {
-    marginBottom: 10,
-  },
-  title: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#fff',
-    textAlign: 'center',
-  },
-  subtitleContainer: {},
-  subtitle: {
-    fontSize: 18,
-    color: 'rgba(255, 255, 255, 0.9)',
-    textAlign: 'center',
-  },
+  container: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  bg: { position: 'absolute', width, height },
+  icon: { fontSize: 80, marginBottom: 10 },
+  temp: { fontSize: 72, fontWeight: 'bold', color: '#fff' },
+  label: { fontSize: 24, color: 'rgba(255,255,255,0.9)', marginTop: 5 },
+  details: { fontSize: 16, color: 'rgba(255,255,255,0.7)', marginTop: 15 },
+  loadingText: { color: '#fff', marginTop: 15, fontSize: 16 },
+  errorText: { color: '#ff6b6b', fontSize: 18, textAlign: 'center', paddingHorizontal: 30 },
 });
