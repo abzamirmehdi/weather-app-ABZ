@@ -1,0 +1,23 @@
+const GEO_API_URL = 'https://geocoding-api.open-meteo.com/v1/search';
+
+export async function searchCities(query) {
+  if (!query || query.length < 2) return [];
+  
+  const params = new URLSearchParams({
+    name: query,
+    count: '10',
+    language: 'fa',
+    format: 'json',
+  });
+
+  try {
+    const response = await fetch(`${GEO_API_URL}?${params}`);
+    if (!response.ok) throw new Error('خطا در جستجو');
+    const data = await response.json();
+    
+    return data.results || [];
+  } catch (e) {
+    console.error('خطا در جستجوی شهر:', e);
+    return [];
+  }
+}
