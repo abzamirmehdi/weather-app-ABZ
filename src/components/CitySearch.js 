@@ -1,0 +1,247 @@
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, Text, View, TextInput, FlatList, TouchableOpacity, Modal } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import { searchCities } from '../services/citiesApi';
+import { getFavorites, saveFavorite, removeFavorite } from '../services/favoritesStorage';
+
+export default function CitySearch({ onCitySelect }) {
+  const [modalVisible, setModalVisible] = useState(false);
+  const [query, setQuery] = useState('');
+  const [cities, setCities] = useState([]);
+  const [favorites, setFavorites] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const scale = useSharedValue(1);
+
+  useEffect(() => {
+    loadFavorites();
+  }, []);
+
+  useEffect(() => {
+    if (query.length >= 2) {
+      searchCities(query).then(setCities);
+    } else {
+      setCities([]);
+    }
+  }, [query]);
+
+  async function loadFavorites() {
+    const favs = await getFavorites();
+    setFavorites(favs);
+  }
+
+  async function handleSelectCity(city) {
+    setModalVisible(false);
+    setQuery('');
+    onCitySelect(city);
+    
+    scale.value = withTiming(1.2, { duration: 150 });
+    scale.value = withTiming(1, { duration: 150 });
+  }
+
+  async function toggleFavorite(city) {
+    const exists = favorites.find(f => f.id === city.id);
+    if (exists) {
+      const updated = await removeFavorite(city.id);
+      setFavorites(updated);
+    } else {
+      const updated = await saveFavorite(city);
+      setFavorites(updated);
+    }
+  }
+
+  const buttonStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  return (
+    <>
+      <Animated.View style={[styles.buttonContainer, buttonStyle]}>
+        <TouchableOpacity 
+          style={styles.searchButton}
+          onPress={() => setModalVisible(true)}
+        >
+          <Text style={styles.buttonIcon}>🔍</Text>
+          <Text style={styles.buttonText}>جستجوی شهر</Text>
+        </TouchableOpacity>
+      </Animated.View>
+
+      <Modal
+        visible={modalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>جستجوی شهر</Text>
+            
+            <TextInput
+              style={styles.input}
+              placeholder="نام شهر را وارد کنید..."
+              placeholderTextColor="rgba(255,255,255,0.5)"
+              value={query}
+              onChangeText={setQuery}
+              autoFocus
+            />
+
+            {favorites.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>⭐ شهرهای مورد علاقه</Text>
+                {favorites.map(city => (
+                  <TouchableOpacity
+                    key={city.id}
+                    style={styles.cityItem}
+                    onPress={() => handleSelectCity(city)}
+                  >
+                    <Text style={styles.cityName}>{city.name}</Text>
+                    <TouchableOpacity onPress={() => toggleFavorite(city)}>
+                      <Text style={styles.starIcon}>⭐</Text>
+                    </TouchableOpacity>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            {cities.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>نتایج جستجو</Text>
+                <FlatList
+                  data={cities}
+                  keyExtractor={item => item.id.toString()}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={styles.cityItem}
+                      onPress={() => handleSelectCity(item)}
+                    >
+                      <View style={styles.cityInfo}>
+                        <Text style={styles.cityName}>{item.name}</Text>
+                        <Text style={styles.countryName}>{item.country}</Text>
+                      </View>
+                      <TouchableOpacity onPress={() => toggleFavorite(item)}>
+                        <Text style={styles.starIcon}>
+                          {favorites.find(f => f.id === item.id) ? '⭐' : '☆'}
+                        </Text>
+                      </TouchableOpacity>
+                    </TouchableOpacity>
+                  )}
+                />
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setModalVisible(false)}
+            >
+              <Text style={styles.closeButtonText}>بستن</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </>
+  );
+}
+
+const styles = StyleSheet.create({
+  buttonContainer: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 100,
+  },
+  searchButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  buttonIcon: {
+    fontSize: 18,
+    marginRight: 8,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#1e3c72',
+    borderRadius: 20,
+    padding: 20,
+    maxHeight: '80%',
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  input: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
+    padding: 15,
+    color: '#fff',
+    fontSize: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  section: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginBottom: 10,
+  },
+  cityItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  cityInfo: {
+    flex: 1,
+  },
+  cityName: {
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  countryName: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.6)',
+    marginTop: 2,
+  },
+  starIcon: {
+    fontSize: 24,
+    marginLeft: 10,
+  },
+  closeButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    padding: 15,
+    borderRadius: 12,
+    marginTop: 10,
+  },
+  closeButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+});
