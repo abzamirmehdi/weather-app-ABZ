@@ -2,48 +2,73 @@ name: Build APK
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
 jobs:
   build:
     name: Build Android APK
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Fix filenames, imports and assets
+        run: |
+          mkdir -p src/components src/services assets
+
+          find . -iname '*DailyForecast.js*' -not -path './.git/*' | head -1 | xargs -I{} cp "{}" src/components/DailyForecast.js
+          find . -iname '*CitySearch.js*' -not -path './.git/*' | head -1 | xargs -I{} cp "{}" src/components/CitySearch.js
+          find . -iname '*citiesApi.js*' -not -path './.git/*' | head -1 | xargs -I{} cp "{}" src/services/citiesApi.js
+
+          sed -i "s|from './services/|from '../services/|g" src/components/CitySearch.js src/components/DailyForecast.js || true
+
+          if [ -f assets/icon.png ]; then
+            cp assets/icon.png assets/splash.png
+            cp assets/icon.png assets/adaptive-icon.png
+            cp assets/icon.png assets/favicon.png
+          fi
+
+          find . -maxdepth 1 -name '*package-lock.json*' -delete
+
+          echo "=== src/components ==="
+          ls -la src/components
+          echo "=== src/services ==="
+          ls -la src/services
+          echo "=== assets ==="
+          ls -la assets
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: '22'
 
       - name: Install dependencies
-        run: npm install
+        run: npm install --legacy-peer-deps
 
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
+          distribution: temurin
           java-version: '17'
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Generate Android project
-        run: npx expo prebuild --platform android --clean
+        run: npx expo prebuild --platform android --non-interactive
 
-      - name: Make gradlew executable
-        run: chmod +x android/gradlew
-
-      - name: Build APK
+      - name: Build debug APK
         run: |
+          chmod +x android/gradlew
           cd android
-          ./gradlew assembleRelease
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: weather-app-abz-apk
-          path: android/app/build/outputs/apk/release/app-release-unsigned.apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
           retention-days: 30
