@@ -11,6 +11,7 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import { fetchWeather, getWeatherInfo } from './src/services/weatherApi';
+import WeatherAnimation from './src/components/WeatherAnimation';
 
 const { width, height } = Dimensions.get('window');
 
@@ -82,6 +83,10 @@ export default function App() {
   return (
     <View style={styles.container}>
       <LinearGradient colors={['#1e3c72', '#2a5298', '#4a90e2']} style={styles.bg} />
+      
+      {/* انیمیشن آب‌وهوایی */}
+      <WeatherAnimation weatherCode={weather.weatherCode} />
+      
       <StatusBar style="light" />
 
       <Text style={styles.icon}>{info.icon}</Text>
@@ -100,10 +105,10 @@ const styles = StyleSheet.create({
   container: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   bg: { position: 'absolute', width, height },
-  icon: { fontSize: 80, marginBottom: 10 },
-  temp: { fontSize: 72, fontWeight: 'bold', color: '#fff' },
-  label: { fontSize: 24, color: 'rgba(255,255,255,0.9)', marginTop: 5 },
-  details: { fontSize: 16, color: 'rgba(255,255,255,0.7)', marginTop: 15 },
+  icon: { fontSize: 80, marginBottom: 10, zIndex: 10 },
+  temp: { fontSize: 72, fontWeight: 'bold', color: '#fff', zIndex: 10 },
+  label: { fontSize: 24, color: 'rgba(255,255,255,0.9)', marginTop: 5, zIndex: 10 },
+  details: { fontSize: 16, color: 'rgba(255,255,255,0.7)', marginTop: 15, zIndex: 10 },
   loadingText: { color: '#fff', marginTop: 15, fontSize: 16 },
   errorText: { color: '#ff6b6b', fontSize: 18, textAlign: 'center', paddingHorizontal: 30 },
 });
