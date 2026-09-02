@@ -14,6 +14,7 @@ import { fetchWeather, getWeatherInfo } from './src/services/weatherApi';
 import WeatherAnimation from './src/components/WeatherAnimation';
 import DailyForecast from './src/components/DailyForecast';
 import WeatherDetails from './src/components/WeatherDetails';
+import CitySearch from './src/components/CitySearch';
 
 const { width, height } = Dimensions.get('window');
 
@@ -21,6 +22,7 @@ export default function App() {
   const [weather, setWeather] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedCity, setSelectedCity] = useState(null);
 
   const tempScale = useSharedValue(0);
   const tempOpacity = useSharedValue(0);
@@ -41,16 +43,26 @@ export default function App() {
     opacity: tempOpacity.value,
   }));
 
-  async function loadWeather() {
+  async function loadWeather(city = null) {
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        setError('لطفاً دسترسی موقعیت مکانی را فعال کنید');
-        setLoading(false);
-        return;
+      let latitude, longitude;
+      
+      if (city) {
+        latitude = city.latitude;
+        longitude = city.longitude;
+      } else {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          setError('لطفاً دسترسی موقعیت مکانی را فعال کنید');
+          setLoading(false);
+          return;
+        }
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low });
+        latitude = loc.coords.latitude;
+        longitude = loc.coords.longitude;
       }
-      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low });
-      const data = await fetchWeather(loc.coords.latitude, loc.coords.longitude);
+      
+      const data = await fetchWeather(latitude, longitude);
       setWeather(data);
     } catch (e) {
       setError('خطا در دریافت اطلاعات هوا');
@@ -91,6 +103,12 @@ export default function App() {
       
       <StatusBar style="light" />
 
+      <CitySearch onCitySelect={(city) => {
+        setSelectedCity(city);
+        setLoading(true);
+        loadWeather(city);
+      }} />
+
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.icon}>{info.icon}</Text>
 
@@ -99,6 +117,9 @@ export default function App() {
         </Animated.View>
 
         <Text style={styles.label}>{info.label}</Text>
+        
+        {selectedCity && <Text style={styles.cityName}>{selectedCity.name}</Text>}
+        
         <Text style={styles.details}>💧 {weather.humidity}% | 💨 {weather.windSpeed} km/h</Text>
 
         {/* جزئیات کامل */}
@@ -124,6 +145,13 @@ const styles = StyleSheet.create({
   icon: { fontSize: 80, marginBottom: 10, zIndex: 10 },
   temp: { fontSize: 72, fontWeight: 'bold', color: '#fff', zIndex: 10 },
   label: { fontSize: 24, color: 'rgba(255,255,255,0.9)', marginTop: 5, zIndex: 10 },
+  cityName: {
+    fontSize: 20,
+    color: '#fff',
+    marginTop: 10,
+    fontWeight: '600',
+    zIndex: 10,
+  },
   details: { fontSize: 16, color: 'rgba(255,255,255,0.7)', marginTop: 15, zIndex: 10 },
   loadingText: { color: '#fff', marginTop: 15, fontSize: 16 },
   errorText: { color: '#ff6b6b', fontSize: 18, textAlign: 'center', paddingHorizontal: 30 },
