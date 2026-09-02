@@ -13,6 +13,7 @@ import * as Location from 'expo-location';
 import { fetchWeather, getWeatherInfo } from './src/services/weatherApi';
 import WeatherAnimation from './src/components/WeatherAnimation';
 import DailyForecast from './src/components/DailyForecast';
+import WeatherDetails from './src/components/WeatherDetails';
 
 const { width, height } = Dimensions.get('window');
 
@@ -99,6 +100,9 @@ export default function App() {
 
         <Text style={styles.label}>{info.label}</Text>
         <Text style={styles.details}>💧 {weather.humidity}% | 💨 {weather.windSpeed} km/h</Text>
+
+        {/* جزئیات کامل */}
+        <WeatherDetails weather={weather} />
 
         {/* پیش‌بینی ۷ روزه */}
         <DailyForecast daily={weather.daily} />
