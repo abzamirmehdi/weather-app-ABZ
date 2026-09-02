@@ -98,7 +98,6 @@ export default function App() {
     <View style={styles.container}>
       <LinearGradient colors={['#1e3c72', '#2a5298', '#4a90e2']} style={styles.bg} />
       
-      {/* انیمیشن آب‌وهوایی */}
       <WeatherAnimation weatherCode={weather.weatherCode} />
       
       <StatusBar style="light" />
@@ -122,10 +121,8 @@ export default function App() {
         
         <Text style={styles.details}>💧 {weather.humidity}% | 💨 {weather.windSpeed} km/h</Text>
 
-        {/* جزئیات کامل */}
         <WeatherDetails weather={weather} />
 
-        {/* پیش‌بینی ۷ روزه */}
         <DailyForecast daily={weather.daily} />
       </ScrollView>
     </View>
