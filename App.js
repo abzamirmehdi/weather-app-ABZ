@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, ActivityIndicator, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, ActivityIndicator, Dimensions, ScrollView } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import Animated, {
   useSharedValue,
@@ -12,6 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import { fetchWeather, getWeatherInfo } from './src/services/weatherApi';
 import WeatherAnimation from './src/components/WeatherAnimation';
+import DailyForecast from './src/components/DailyForecast';
 
 const { width, height } = Dimensions.get('window');
 
@@ -89,22 +90,33 @@ export default function App() {
       
       <StatusBar style="light" />
 
-      <Text style={styles.icon}>{info.icon}</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Text style={styles.icon}>{info.icon}</Text>
 
-      <Animated.View style={[tempStyle]}>
-        <Text style={styles.temp}>{weather.temperature}°</Text>
-      </Animated.View>
+        <Animated.View style={[tempStyle]}>
+          <Text style={styles.temp}>{weather.temperature}°</Text>
+        </Animated.View>
 
-      <Text style={styles.label}>{info.label}</Text>
-      <Text style={styles.details}>💧 {weather.humidity}% | 💨 {weather.windSpeed} km/h</Text>
+        <Text style={styles.label}>{info.label}</Text>
+        <Text style={styles.details}>💧 {weather.humidity}% | 💨 {weather.windSpeed} km/h</Text>
+
+        {/* پیش‌بینی ۷ روزه */}
+        <DailyForecast daily={weather.daily} />
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  container: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   bg: { position: 'absolute', width, height },
+  scrollContent: {
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingBottom: 30,
+  },
   icon: { fontSize: 80, marginBottom: 10, zIndex: 10 },
   temp: { fontSize: 72, fontWeight: 'bold', color: '#fff', zIndex: 10 },
   label: { fontSize: 24, color: 'rgba(255,255,255,0.9)', marginTop: 5, zIndex: 10 },
